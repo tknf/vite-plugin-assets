@@ -1,0 +1,55 @@
+{
+	"name": "@tknf/vite-plugin-assets",
+	"version": "0.1.0",
+	"description": "",
+	"keywords": [
+		"vite",
+		"assets",
+		"bundle",
+		"frontend",
+		"javascript",
+		"css"
+	],
+	"repository": {
+		"url": "https://github.com/tknf/vite-plugin-assets"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org"
+	},
+	"license": "MIT",
+	"author": "tknf <dev@tknf.net>",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./plugin": {
+			"types": "./dist/plugin.d.ts",
+			"import": "./dist/plugin.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup",
+		"test": "vitest run",
+		"test:covarage": "vitest run --coverage",
+		"check": "biome check",
+		"lint": "biome lint",
+		"format": "biome format",
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "npm run build && npm run typecheck && npm run check"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.0.0",
+		"@types/node": "^24.0.3",
+		"@vitest/coverage-v8": "^3.2.4",
+		"tsup": "^8.5.0",
+		"typescript": "^5.8.3",
+		"vite": "^6.3.5",
+		"vitest": "^3.2.4"
+	}
+}
