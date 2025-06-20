@@ -48,12 +48,12 @@ const assetsPlugin = (options: VitePluginAssetsOptions = {}): PluginOption => {
 
 	// Collect enabled plugins based on configuration
 	const plugins: PluginOption[] = [];
-	
+
 	// Add build ID plugin if enabled (default: true)
 	if (buildId.enabled !== false) {
 		plugins.push(buildIdPlugin({ enabled: true }));
 	}
-	
+
 	// Add asset pipeline plugin if enabled (default: true)
 	if (pipeline.enabled !== false) {
 		plugins.push(
@@ -64,7 +64,7 @@ const assetsPlugin = (options: VitePluginAssetsOptions = {}): PluginOption => {
 			})
 		);
 	}
-	
+
 	// Add hot reload plugin if enabled (default: true)
 	if (hotReload.enabled !== false) {
 		// Normalize pipeline entries to array format
