@@ -1,7 +1,7 @@
 {
 	"name": "@tknf/vite-plugin-assets",
 	"version": "0.1.0",
-	"description": "",
+	"description": "Seamless asset management for TypeScript backends with Vite frontends",
 	"keywords": [
 		"vite",
 		"assets",
@@ -36,7 +36,7 @@
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
-		"test:covarage": "vitest run --coverage",
+		"test:coverage": "vitest run --coverage",
 		"check": "biome check",
 		"lint": "biome lint",
 		"format": "biome format",
@@ -46,10 +46,14 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0",
 		"@types/node": "^24.0.3",
+		"@types/picomatch": "^4.0.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"tsup": "^8.5.0",
 		"typescript": "^5.8.3",
 		"vite": "^6.3.5",
 		"vitest": "^3.2.4"
+	},
+	"dependencies": {
+		"picomatch": "^4.0.2"
 	}
 }

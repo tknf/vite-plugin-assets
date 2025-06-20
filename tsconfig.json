@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"target": "ESNext",
-		"module": "ESNext",
+		"module": "ES2022",
 		"moduleResolution": "Bundler",
 		"strict": true,
 		"skipLibCheck": true,
@@ -9,5 +9,5 @@
 		"lib": ["ESNext"],
 		"types": ["@types/node", "vite/client"]
 	},
-	"include": ["**/*.ts"]
+	"include": ["**/*.ts", "**/*.tsx"]
 }

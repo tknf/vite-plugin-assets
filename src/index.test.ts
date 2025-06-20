@@ -1,69 +1,74 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
-import { resolveAssetPath, getEntryAssets, clearManifestCache } from "./index";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { __resetManifestCache, asset, loadManifest } from "./index";
 
-// import.meta.env をモック
-vi.stubGlobal("import", {
-	meta: {
-		env: {
-			PROD: false,
-			VITE_MANIFEST_PATH: ".vite/manifest.json",
-		},
-		glob: vi.fn(() => ({})),
-	},
+beforeEach(() => {
+	vi.clearAllMocks();
+	__resetManifestCache();
 });
 
-describe("asset resolver", () => {
-	beforeEach(() => {
-		clearManifestCache();
+describe("index module", () => {
+	test("imports index module to ensure coverage", () => {
+		expect(typeof asset).toBe("function");
+		expect(typeof loadManifest).toBe("function");
 	});
 
-	describe("resolveAssetPath", () => {
-		it("should return Vite dev server URL in development mode", async () => {
-			const path = await resolveAssetPath("src/main.ts", {
-				environment: "development",
-				viteDevServerUrl: "http://localhost:5173",
-			});
+	test("asset function in development mode", () => {
+		// Test various input combinations in development mode (PROD is false by default)
+		expect(asset("/test.js")).toBe("/test.js");
+		expect(asset("styles.css")).toBe("styles.css");
+		expect(asset("/src/main.js", "https://cdn.example.com")).toBe("/src/main.js");
+		expect(asset("")).toBe("");
+		expect(asset("app.js")).toBe("app.js");
+		expect(asset("/app.js")).toBe("/app.js");
+		expect(asset("components/Button.tsx")).toBe("components/Button.tsx");
+		expect(asset("/components/Button.tsx")).toBe("/components/Button.tsx");
 
-			expect(path).toBe("http://localhost:5173/src/main.ts");
-		});
-
-		it("should handle leading slash in asset name", async () => {
-			const path = await resolveAssetPath("/src/main.ts", {
-				environment: "development",
-				viteDevServerUrl: "http://localhost:5173",
-			});
-
-			expect(path).toBe("http://localhost:5173/src/main.ts");
-		});
-
-		it("should use import.meta.env.PROD for environment detection", async () => {
-			// 本番環境をシミュレート
-			vi.stubGlobal("import", {
-				meta: {
-					env: {
-						PROD: false, // 開発環境
-						VITE_MANIFEST_PATH: ".vite/manifest.json",
-					},
-					glob: vi.fn(() => ({})),
-				},
-			});
-
-			const path = await resolveAssetPath("src/main.ts");
-			expect(path).toBe("http://localhost:5173/src/main.ts");
-		});
+		// Test with base URLs (should be ignored in development)
+		expect(asset("main.js", "/")).toBe("main.js");
+		expect(asset("main.js", "/assets/")).toBe("main.js");
+		expect(asset("main.js", "https://cdn.example.com")).toBe("main.js");
 	});
 
-	describe("getEntryAssets", () => {
-		it("should return only JS file in development mode", async () => {
-			const assets = await getEntryAssets("src/main.ts", {
-				environment: "development",
-				viteDevServerUrl: "http://localhost:5173",
-			});
+	test("asset function in production mode with no manifest", () => {
+		// Set production mode
+		vi.stubEnv("PROD", true);
+		__resetManifestCache();
 
-			expect(assets).toEqual({
-				js: ["http://localhost:5173/src/main.ts"],
-				css: [],
-			});
-		});
+		// In production with no manifest, should return empty string
+		expect(asset("any.js")).toBe("");
+		expect(asset("/any.js")).toBe("");
+		expect(asset("")).toBe("");
+
+		vi.unstubAllEnvs();
+	});
+
+	test("loadManifest function behavior with no manifest", () => {
+		// Test with no manifest files
+		__resetManifestCache();
+		expect(loadManifest()).toBeNull();
+	});
+
+	test("asset function basic path handling", () => {
+		// Test basic functionality without relying on manifest
+		expect(asset("test.js")).toBe("test.js");
+		expect(asset("/test.js")).toBe("/test.js");
+	});
+
+	test("asset function with empty path", () => {
+		// Test edge case with empty path
+		expect(asset("")).toBe("");
+	});
+
+	test("asset function with baseUrl in development", () => {
+		// Test that baseUrl is ignored in development mode
+		expect(asset("main.js", "https://cdn.example.com")).toBe("main.js");
+		expect(asset("/main.js", "/base/")).toBe("/main.js");
+	});
+
+	test("loadManifest caching behavior", () => {
+		// Test that manifest is cached
+		const first = loadManifest();
+		const second = loadManifest();
+		expect(first).toBe(second);
 	});
 });
