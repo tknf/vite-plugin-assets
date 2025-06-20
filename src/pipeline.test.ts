@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { Plugin, ResolvedConfig } from "vite";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { assetsPipelinePlugin, type VitePluginAssetsPipelineOptions } from "./pipeline";
 
 // Mock fs operations for testing scanFiles functionality
