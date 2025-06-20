@@ -1,6 +1,6 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { defineConfig } from "vite";
-import { assetsPlugin } from "../src/plugin";
+import { a, assetsPlugin } from "../src/plugin";
 
 export default defineConfig({
 	plugins: [
@@ -10,5 +10,6 @@ export default defineConfig({
 				port: 3000,
 			},
 		}),
+		a(),
 	],
 });

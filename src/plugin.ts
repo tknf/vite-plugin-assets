@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
-import type { Plugin } from "vite";
+import type { Plugin, PluginOption, ResolvedConfig, UserConfig } from "vite";
 
 export interface BuildIdOptions {
 	/**
@@ -21,39 +21,20 @@ export interface VitePluginAssetsOptions {
 		enabled?: boolean;
 	};
 	/**
-	 * マニフェストに追加のメタデータを含めるかどうか
-	 * デフォルト: false
-	 */
-	includeMetadata?: boolean;
-	/**
 	 * マニフェストファイルのパス（ビルド後の相対パス）
 	 * デフォルト: ".vite/manifest.json"
 	 */
-	manifestPath?: string;
-	/**
-	 * アセットの出力ディレクトリ
-	 * デフォルト: "assets"
-	 */
-	assetsDir?: string;
-	/**
-	 * 開発サーバーオプション（Viteのserverオプションと同じ）
-	 */
-	server?: {
+	manifest?: {
 		/**
-		 * サーバーのホスト
-		 * デフォルト: "localhost"
+		 * マニフェストファイルのパス（ビルド後の相対パス）
+		 * デフォルト: ".vite/manifest.json"
 		 */
-		host?: string | boolean;
+		path?: string;
 		/**
-		 * サーバーのポート
-		 * デフォルト: 5173
-		 */
-		port?: number;
-		/**
-		 * HTTPSを使用するかどうか
+		 * マニフェストに追加のメタデータを含めるかどうか
 		 * デフォルト: false
 		 */
-		https?: boolean;
+		includeMetadata?: boolean;
 	};
 }
 
@@ -75,35 +56,29 @@ const generateBuildId = (options: BuildIdOptions = {}): string => {
 
 const VIRTUAL_CONFIG_ID = "virtual:vite-plugin-assets/config";
 const RESOLVED_VIRTUAL_CONFIG_ID = `\0${VIRTUAL_CONFIG_ID}`;
+const DEFAULT_MANIFEST_PATH = ".vite/manifest.json";
+const DEFAULT_ASSETS_DIR = "assets";
+const DEFAULT_OUT_DIR = "dist";
 
-export const assetsPlugin = (options: VitePluginAssetsOptions = {}): Plugin => {
+export const assetsPlugin = (options: VitePluginAssetsOptions = {}): PluginOption => {
 	const {
 		buildId = {},
-		includeMetadata = false,
-		manifestPath = ".vite/manifest.json",
-		assetsDir = "assets",
-		server = {},
+		manifest = {
+			path: DEFAULT_MANIFEST_PATH,
+			includeMetadata: false,
+		},
 	} = options;
 	const buildIdEnabled = buildId.enabled !== false;
 
 	let currentBuildId: string | undefined;
-	let resolvedServerConfig: any = {};
+	let resolvedConfig: ResolvedConfig | undefined;
+	let manifestPath = `/${DEFAULT_OUT_DIR}/${manifest.path || DEFAULT_MANIFEST_PATH}`;
 
-	return {
+	const plugin = {
 		name: "vite-plugin-assets",
 
 		// Viteの設定を変更
-		config(config) {
-			// アセット出力ディレクトリを設定
-			if (!config.build) config.build = {};
-			if (!config.build.assetsDir) {
-				config.build.assetsDir = assetsDir;
-			}
-
-			// サーバー設定を統合
-			if (!config.server) config.server = {};
-			Object.assign(config.server, server);
-
+		config(config: UserConfig) {
 			// 環境変数を設定
 			const defines: Record<string, string> = {};
 
@@ -121,12 +96,16 @@ export const assetsPlugin = (options: VitePluginAssetsOptions = {}): Plugin => {
 			if (!config.optimizeDeps.exclude) config.optimizeDeps.exclude = [];
 			config.optimizeDeps.exclude.push(VIRTUAL_CONFIG_ID);
 
+			// マニフェストの設定
+			const outDir = config.build?.outDir || DEFAULT_OUT_DIR;
+			manifestPath = `/${outDir}/${manifest.path || DEFAULT_MANIFEST_PATH}`;
+
 			return config;
 		},
 
 		// 解決された設定を保存
-		configResolved(config) {
-			resolvedServerConfig = config.server;
+		configResolved(config: ResolvedConfig) {
+			resolvedConfig = config;
 		},
 
 		// ビルド開始時にビルドIDを生成
@@ -138,27 +117,31 @@ export const assetsPlugin = (options: VitePluginAssetsOptions = {}): Plugin => {
 		},
 
 		// バーチャルモジュールの解決
-		resolveId(id) {
+		resolveId(id: string) {
 			if (id === VIRTUAL_CONFIG_ID) {
 				return RESOLVED_VIRTUAL_CONFIG_ID;
 			}
 		},
 
 		// バーチャルモジュールの内容を提供
-		load(id) {
+		load(id: string) {
 			if (id === RESOLVED_VIRTUAL_CONFIG_ID) {
 				// サーバーURLを構築
-				const protocol = resolvedServerConfig?.https ? "https" : "http";
+				const protocol = resolvedConfig?.server?.https ? "https" : "http";
 				const host =
-					resolvedServerConfig?.host === true
+					resolvedConfig?.server?.host === true
 						? "0.0.0.0"
-						: resolvedServerConfig?.host || "localhost";
-				const port = resolvedServerConfig?.port || 5173;
+						: resolvedConfig?.server?.host || "localhost";
+				const port = resolvedConfig?.server?.port || 5173;
 				const viteDevServerUrl = `${protocol}://${host}:${port}`;
+				const build = {
+					assetsDir: resolvedConfig?.build?.assetsDir || DEFAULT_ASSETS_DIR,
+					outDir: resolvedConfig?.build?.outDir || DEFAULT_OUT_DIR,
+				};
 
 				const config = {
 					manifestPath,
-					assetsDir,
+					build,
 					viteDevServerUrl,
 					buildId: currentBuildId || null,
 				};
@@ -167,13 +150,13 @@ export const assetsPlugin = (options: VitePluginAssetsOptions = {}): Plugin => {
 		},
 
 		// マニフェストにメタデータを追加
-		generateBundle(_, bundle) {
-			if (!includeMetadata || !currentBuildId) return;
+		generateBundle(_: any, bundle: any) {
+			if (!manifest.includeMetadata || !currentBuildId) return;
 
 			// manifest.jsonを探す
 			for (const [fileName, asset] of Object.entries(bundle)) {
-				if (fileName.endsWith("manifest.json") && asset.type === "asset") {
-					const manifest = JSON.parse(asset.source as string);
+				if (fileName.endsWith("manifest.json") && (asset as any).type === "asset") {
+					const manifest = JSON.parse((asset as any).source as string);
 
 					// メタデータを追加
 					manifest._metadata = {
@@ -182,11 +165,13 @@ export const assetsPlugin = (options: VitePluginAssetsOptions = {}): Plugin => {
 					};
 
 					// 更新されたマニフェストを設定
-					asset.source = JSON.stringify(manifest, null, 2);
+					(asset as any).source = JSON.stringify(manifest, null, 2);
 				}
 			}
 		},
 	};
+
+	return plugin;
 };
 
 export default assetsPlugin;
