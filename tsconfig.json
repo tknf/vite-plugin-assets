@@ -9,5 +9,6 @@
 		"lib": ["ESNext"],
 		"types": ["@types/node", "vite/client"]
 	},
-	"include": ["**/*.ts", "**/*.tsx"]
+	"include": ["**/*.ts", "**/*.tsx"],
+	"exclude": ["examples"]
 }
